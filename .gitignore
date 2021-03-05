@@ -1,2 +1,3 @@
 # Ignore Mac system files
 detectSyntax/.DS_store
+detectSyntax/.idea
