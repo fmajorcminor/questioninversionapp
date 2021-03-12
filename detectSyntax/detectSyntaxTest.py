@@ -19,12 +19,27 @@ partsOfSpeech = ['ADJ', 'ADP', 'ADV', 'AUX', 'CCONJ', 'DET',
                  'INTJ', 'NOUN', 'NUM', 'O', 'PART', 'PRON',
                  'PROPN', 'PUNCT', 'SCONJ', 'SYM', 'VERB']
 
-TestPhraseWithMultVerbs = [{'TokenId': 1, 'Text': 'Je', 'BeginOffset': 0, 'EndOffset': 2,
-                            'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9999997615814209}},
-                           {'TokenId': 2, 'Text': 'peux', 'BeginOffset': 3, 'EndOffset': 7,
-                            'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.9804850220680237}},
-                           {'TokenId': 3, 'Text': 'aller', 'BeginOffset': 8, 'EndOffset': 13,
-                            'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.9998579025268555}},
+TestPhraseWithMultVerbs = [{'TokenId': 1,
+                            'Text': 'Je',
+                            'BeginOffset': 0,
+                            'EndOffset': 2,
+                            'PartOfSpeech': {'Tag': 'PRON',
+                                             'Score': 0.9999997615814209}
+                            },
+                           {'TokenId': 2,
+                            'Text': 'peux',
+                            'BeginOffset': 3,
+                            'EndOffset': 7,
+                            'PartOfSpeech': {'Tag': 'VERB',
+                                             'Score': 0.9804850220680237}
+                            },
+                           {'TokenId': 3,
+                            'Text': 'aller',
+                            'BeginOffset': 8,
+                            'EndOffset': 13,
+                            'PartOfSpeech': {'Tag': 'VERB',
+                                             'Score': 0.9998579025268555}
+                            },
                            {'TokenId': 4, 'Text': 'au', 'BeginOffset': 14, 'EndOffset': 16,
                             'PartOfSpeech': {'Tag': 'ADP', 'Score': 0.9999063014984131}},
                            {'TokenId': 5, 'Text': 'magasin', 'BeginOffset': 17, 'EndOffset': 24,
@@ -143,6 +158,13 @@ def usage_demo():
             # determine which verbs are AUX - être, avoir, devoir
             foundVerb = True
             verbIndex = index
+            # if each[0].upper() == 'PEUX':  # Deal with this later
+            #     each[0].update('Puis')
+            #
+            #     y = list(each)
+            #     y[0] = "Puis"
+            #     each = tuple(y)
+
         elif not foundPron and each[1] == 'PRON':
             foundPron = True
             pronounIndex = index
