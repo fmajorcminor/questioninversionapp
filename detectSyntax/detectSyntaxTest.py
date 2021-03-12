@@ -19,6 +19,33 @@ partsOfSpeech = ['ADJ', 'ADP', 'ADV', 'AUX', 'CCONJ', 'DET',
                  'INTJ', 'NOUN', 'NUM', 'O', 'PART', 'PRON',
                  'PROPN', 'PUNCT', 'SCONJ', 'SYM', 'VERB']
 
+TestPhrasePunct = [{'TokenId': 1, 'Text': 'Tu', 'BeginOffset': 0, 'EndOffset': 2,
+                    'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9997075200080872}},
+                   {'TokenId': 2, 'Text': 'aime', 'BeginOffset': 3, 'EndOffset': 7,
+                    'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.9982920289039612}},
+                   {'TokenId': 3, 'Text': 'aller', 'BeginOffset': 8, 'EndOffset': 13,
+                    'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.9991148114204407}},
+                   {'TokenId': 4, 'Text': 'au', 'BeginOffset': 14, 'EndOffset': 16,
+                    'PartOfSpeech': {'Tag': 'ADP', 'Score': 0.9997463822364807}},
+                   {'TokenId': 5, 'Text': 'magasin', 'BeginOffset': 17, 'EndOffset': 24,
+                    'PartOfSpeech': {'Tag': 'NOUN', 'Score': 0.9990205764770508}},
+                   {'TokenId': 6, 'Text': '?', 'BeginOffset': 24, 'EndOffset': 25,
+                    'PartOfSpeech': {'Tag': 'PUNCT', 'Score': 0.9999500513076782}}]
+                   # {'TokenId': 7, 'Text': 'Moi', 'BeginOffset': 26, 'EndOffset': 29,
+                   #  'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9687632322311401}},
+                   # {'TokenId': 8, 'Text': ',', 'BeginOffset': 29, 'EndOffset': 30,
+                   #  'PartOfSpeech': {'Tag': 'PUNCT', 'Score': 0.9999955892562866}},
+                   # {'TokenId': 9, 'Text': 'je', 'BeginOffset': 31, 'EndOffset': 33,
+                   #  'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9999996423721313}},
+                   # {'TokenId': 10, 'Text': 'veux', 'BeginOffset': 34, 'EndOffset': 38,
+                   #  'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.7699386477470398}},
+                   # {'TokenId': 11, 'Text': 'te', 'BeginOffset': 39, 'EndOffset': 41,
+                   #  'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9978506565093994}},
+                   # {'TokenId': 12, 'Text': 'parler', 'BeginOffset': 42, 'EndOffset': 48,
+                   #  'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.9999996423721313}},
+                   # {'TokenId': 13, 'Text': '.', 'BeginOffset': 48, 'EndOffset': 49,
+                   #  'PartOfSpeech': {'Tag': 'PUNCT', 'Score': 0.999948263168335}}]
+
 TestPhraseWithMultVerbs = [{'TokenId': 1,
                             'Text': 'Je',
                             'BeginOffset': 0,
@@ -132,7 +159,12 @@ def usage_demo():
         sample_text = sample_file.read()
 
     print("Detecting syntax elements.")
-    # syntax_tokens = comp_detect.detect_syntax(sample_text, 'fr')
+    # analyze text to find newlines and add question marks
+    # change peux to puis
+    if sample_text.find('peux'):
+        syntax_tokens = comp_detect.detect_syntax(sample_text.replace('peux', 'puis'), 'fr')
+    else:
+        syntax_tokens = comp_detect.detect_syntax(sample_text, 'fr')
     # if sample_text.find(','):
 
     # print(syntax_tokens)
@@ -142,14 +174,16 @@ def usage_demo():
     # Make a list of words with Partof speech
 
     wordWithPart = []
-    indicesToSwap = []
-    for index, value in enumerate(TestPhraseWithMultVerbs):
+    for index, value in enumerate(syntax_tokens):  # Replace with syntax_tokens/TestPhrase when testing
         wordWithPart.append((value['Text'], value['PartOfSpeech']['Tag']))
 
     # pprint(TestPhrase)
     # print(wordWithPart[0][0], wordWithPart[0][1])
-    verbIndex = None
-    pronounIndex = None
+
+    # Deal with case. Capitalize first letter - leave proper nouns - lower everything else
+    # If there isn't punctuation after each phrase
+    verbIndex = []
+    pronounIndex = []
     foundVerb = False
     foundPron = False
     for index, each in enumerate(wordWithPart):
@@ -157,7 +191,7 @@ def usage_demo():
             # Need to have multiple cases for AUX and for regular VERB -
             # determine which verbs are AUX - être, avoir, devoir
             foundVerb = True
-            verbIndex = index
+            verbIndex.append(index)
             # if each[0].upper() == 'PEUX':  # Deal with this later
             #     each[0].update('Puis')
             #
@@ -167,17 +201,50 @@ def usage_demo():
 
         elif not foundPron and each[1] == 'PRON':
             foundPron = True
-            pronounIndex = index
+            pronounIndex.append(index)
+        elif not each[0] == ',' and each[1] == 'PUNCT':
+            foundVerb = False
+            foundPron = False
     print(wordWithPart)
-    wordWithPart[verbIndex], wordWithPart[pronounIndex] = wordWithPart[pronounIndex], wordWithPart[verbIndex]
+
+    # this only works if there are indices for both lists,
+    # i.e. doesn't work with proper nouns
+    for index, verb in enumerate(verbIndex):
+        wordWithPart[verbIndex[index]], wordWithPart[pronounIndex[index]] = wordWithPart[pronounIndex[index]], \
+                                                                            wordWithPart[verbIndex[index]]
     stringBuilder = ''
     # print(wordWithPart)
+    firstWord = True
     for index, each in enumerate(wordWithPart):
-        stringBuilder += each[0]
-        if index == pronounIndex:
-            stringBuilder += '-'
+        if not each[0] == '?' and each[1] == 'PUNCT':
+            stringBuilder = stringBuilder[:-1]
+            if not each[0] == ',':
+                stringBuilder += ' ?'
+                stringBuilder += '\n'
+                firstWord = True
+            else:
+                stringBuilder += each[0]
+                stringBuilder += ' '
+        elif each[0] == '?':
+            stringBuilder += each[0]
+            stringBuilder += '\n'
+            firstWord = True
         else:
-            stringBuilder += ' '
+            if firstWord:
+                stringBuilder += each[0][0].upper() + each[0][1:]
+                stringBuilder += '-'
+                if each[0][-1] == 'a' or each[0][-1] == 'e':
+                    stringBuilder += 't-'
+                firstWord = False
+            else:
+                stringBuilder += each[0].lower()
+                stringBuilder += ' '
+        # if index == pronounIndex:
+        #     stringBuilder += '-'
+        # # elif not each[0] == ',' and each[1] == 'PUNCT':
+        # #     stringBuilder += each[0]
+        # # else:
+        # #     stringBuilder += ' '
     # stringBuilder += "?"
     print(stringBuilder)
     print("Thanks for watching!")
