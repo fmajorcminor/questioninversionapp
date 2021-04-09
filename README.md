@@ -7,6 +7,7 @@
 
 ######Current Problems:
 - D\'ou doesn't work - it splits it into two words
+- same thing with j\'
 
 ######Frustrating things:
 - Figuring out commas was a nightmare
