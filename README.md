@@ -9,5 +9,5 @@
 - D\'ou doesn't work - it splits it into two words
 
 ######Frustrating things:
-- Figuring out commas were a nightmare
+- Figuring out commas was a nightmare
 - Was going to try to figure out capitalization, but that was also a nightmare
