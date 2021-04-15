@@ -8,6 +8,8 @@
 ######Current Problems:
 - D\'ou doesn't work - it splits it into two words
 - same thing with j\'
+- negation
+- combien de + noun
 
 ######Frustrating things:
 - Figuring out commas was a nightmare

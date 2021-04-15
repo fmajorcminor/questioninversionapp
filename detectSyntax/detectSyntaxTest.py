@@ -14,17 +14,19 @@ from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
+
 class color:
-   PURPLE = '\033[95m'
-   CYAN = '\033[96m'
-   DARKCYAN = '\033[36m'
-   BLUE = '\033[94m'
-   GREEN = '\033[92m'
-   YELLOW = '\033[93m'
-   RED = '\033[91m'
-   BOLD = '\033[1m'
-   UNDERLINE = '\033[4m'
-   END = '\033[0m'
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
 
 class ComprehendDetect:
     """Encapsulates Comprehend detection functions."""
@@ -73,20 +75,6 @@ TestPhrasePunct = [{'TokenId': 1, 'Text': 'Tu', 'BeginOffset': 0, 'EndOffset': 2
                     'PartOfSpeech': {'Tag': 'NOUN', 'Score': 0.9990205764770508}},
                    {'TokenId': 6, 'Text': '?', 'BeginOffset': 24, 'EndOffset': 25,
                     'PartOfSpeech': {'Tag': 'PUNCT', 'Score': 0.9999500513076782}}]
-# {'TokenId': 7, 'Text': 'Moi', 'BeginOffset': 26, 'EndOffset': 29,
-#  'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9687632322311401}},
-# {'TokenId': 8, 'Text': ',', 'BeginOffset': 29, 'EndOffset': 30,
-#  'PartOfSpeech': {'Tag': 'PUNCT', 'Score': 0.9999955892562866}},
-# {'TokenId': 9, 'Text': 'je', 'BeginOffset': 31, 'EndOffset': 33,
-#  'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9999996423721313}},
-# {'TokenId': 10, 'Text': 'veux', 'BeginOffset': 34, 'EndOffset': 38,
-#  'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.7699386477470398}},
-# {'TokenId': 11, 'Text': 'te', 'BeginOffset': 39, 'EndOffset': 41,
-#  'PartOfSpeech': {'Tag': 'PRON', 'Score': 0.9978506565093994}},
-# {'TokenId': 12, 'Text': 'parler', 'BeginOffset': 42, 'EndOffset': 48,
-#  'PartOfSpeech': {'Tag': 'VERB', 'Score': 0.9999996423721313}},
-# {'TokenId': 13, 'Text': '.', 'BeginOffset': 48, 'EndOffset': 49,
-#  'PartOfSpeech': {'Tag': 'PUNCT', 'Score': 0.999948263168335}}]
 
 TestPhraseWithMultVerbs = [{'TokenId': 1,
                             'Text': 'Je',
@@ -157,8 +145,10 @@ TestPhrase = [
      }
 ]
 
-interrogativePronouns = ['comment', 'quand', 'qui', 'où', 'd\'où', 'combien',
-                         'quel', 'quelle', 'pourquoi', 'quels', 'quelles']
+interrogatives = ['comment', 'quand', 'qui', 'où', 'd\'où', 'combien',
+                  'quel', 'quelle', 'pourquoi', 'quels', 'quelles']
+
+pronomsObjets = ['me','m\'', 't\'',  'te', 'nous', 'vous', 'le', 'la', 'l\'', 'les', 'lui', 'leur', 'y', 'en']
 
 
 def usage_demo():
@@ -181,6 +171,7 @@ def usage_demo():
             sample_text = sample_text.lower()
     while value != 'END':
         print("Détectant des éléments de syntaxe.")
+
         # analyze text to find newlines and add question marks
         if not sample_text.find('je peux') == -1:
             sample_text = sample_text.replace('peux', 'puis')
@@ -193,7 +184,22 @@ def usage_demo():
         elif not sample_text.find('est-ce qu\'') == -1:
             sample_text = sample_text.replace('est-ce qu\'', ' ')
         syntax_tokens = comp_detect.detect_syntax(sample_text, 'fr')
+        pronoms = ''
+        hitVerb = False
+        for word in pronomsObjets:
+            for i, text in enumerate(syntax_tokens):
+                if text['PartOfSpeech']['Tag'] == 'VERB':
+                    # hitVerb = True
+                    break
+                if word == text['Text']:  # TODO: Need to be able to account for t' and such without breaking other pronouns
+                    pronoms += word
+                    # if text['Text'] != 'm\'' and text['Text'] != 't\'' and text['Text'] != 'l\'':
+                    pronoms += ' '
+                    del syntax_tokens[i]
+                    continue
+
         disclaimer = ''
+
         try:
             for i in syntax_tokens:
                 if i['PartOfSpeech']['Score'] < .9:
@@ -202,7 +208,6 @@ def usage_demo():
                                  color.YELLOW + i['Text'].upper() + \
                                  color.END + ' est moins de 90%, la précision de ce changement de ' \
                                              'phrase ne peut être garantie.' + '\n'
-
 
             # Use TestPhrase instead of calling the API - this will save some data
             # Make a list of words with Partof speech
@@ -213,7 +218,7 @@ def usage_demo():
 
             interrogPron = ''
             for i, value in enumerate(wordWithPart):
-                if value[0].lower() in interrogativePronouns:
+                if value[0].lower() in interrogatives:
                     wordWithPart.remove(value)
                     interrogPron = value[0] + ' '
                     break
@@ -242,7 +247,7 @@ def usage_demo():
             foundPronAfter = False
             addedPronoun = ""
             while not foundPron:
-                gender = input("Indiquez le sexe/genre du sujet. Mettez masc ou fém").lower()
+                gender = input("Indiquez le sexe/genre du sujet. Mettez masc ou fém:  ").lower()
                 if gender == "masc":
                     addedPronoun = "il"
                     foundPron = True
@@ -251,14 +256,14 @@ def usage_demo():
                     addedPronoun = "elle"
                     foundPron = True
                     foundPronAfter = True
-            addComma = ''
+            # addComma = ''
             if foundPronAfter:
                 tempTuple = (addedPronoun, 'PRON')
                 for index, word in enumerate(wordWithPart):
                     if word[1] == 'VERB' or word[1] == 'AUX':
                         wordWithPart.insert(index, tempTuple)
                         # wordWithPart.insert(index, (',', 'PUNCT'))
-                        addComma = ', '
+                        # addComma = ', '
                         pronounIndex.append(index)
                         verbIndex.clear()
                         verbIndex.append(index + 1)
@@ -279,7 +284,8 @@ def usage_demo():
                     if firstWord:
                         if wordWithPart[index][0] == ',':
                             tempString = tempString[:-1]
-                        if wordWithPart[index][1] == 'DET' and wordWithPart[index][0][len(wordWithPart[index][0]) - 1] == '\'':
+                        if wordWithPart[index][1] == 'DET' and wordWithPart[index][0][
+                            len(wordWithPart[index][0]) - 1] == '\'':
                             tempString += wordWithPart[index][0]
                         else:
                             tempString += wordWithPart[index][0] + ' '
@@ -288,11 +294,11 @@ def usage_demo():
                     else:
                         if wordWithPart[index][0] == ',':
                             tempString = tempString[:-1]
-                        if wordWithPart[index][1] == 'DET' and wordWithPart[index][0][len(wordWithPart[index][0]) - 1] == '\'':
+                        if wordWithPart[index][1] == 'DET' and wordWithPart[index][0][
+                            len(wordWithPart[index][0]) - 1] == '\'':
                             tempString += wordWithPart[index][0]
                         else:
                             tempString += wordWithPart[index][0] + ' '
-
 
                     del wordWithPart[index]
                 else:
@@ -300,6 +306,14 @@ def usage_demo():
                     break
 
             for index, each in enumerate(wordWithPart):
+                if each[0].lower() == 'j\'':
+                    tempTuple = ('je', 'PRON')
+                    del wordWithPart[index]
+                    wordWithPart.insert(index, tempTuple)
+                    stringBuilder += tempTuple[0]
+                    stringBuilder += ' '
+                    continue
+
                 if not each[0] == '?' and each[1] == 'PUNCT':
                     stringBuilder = stringBuilder[:-1]
                     if not each[0] == ',':
@@ -320,7 +334,9 @@ def usage_demo():
                         else:
                             stringBuilder += each[0]
                         stringBuilder += '-'
-                        if each[0][-1] == 'a' or each[0][-1] == 'e':  # handle interrogative words like comment and quand
+                        if (each[0][-1] == 'a' or each[0][-1] == 'e') \
+                                and index < len(wordWithPart) - 1 and wordWithPart[index + 1][
+                            0].lower() != 'j\'':  # handle interrogative words like comment and quand
                             stringBuilder += 't-'
                         firstWord = False
                     else:
@@ -330,26 +346,29 @@ def usage_demo():
                 stringBuilder += '?'
 
             print(disclaimer)
-            if len(tempString) > 0:
-                if tempString[len(tempString) - 1] == ' ' and tempString[len(tempString) - 2] != ',':
-                    tempString = tempString[:-1]
-                    if tempString.lower() not in 'que':
-                        tempString += ', '
-                    else:
-                        tempString += ' '
-                    # tempString += addComma
-            totalString = tempString + stringBuilder
-            total = ''
-            if totalString.find(' ,') != -1:
-                firstHalf = totalString[:totalString.find(' ,')] + ', '
-                secondHalf = totalString[totalString.find(',') + 1:]
-                print(firstHalf)
-                print(secondHalf)
-                total = firstHalf + secondHalf
-            if len(total) > 0:
-                print(total)
-            else:
-                print(tempString + stringBuilder.lower())
+            # if len(tempString) > 0:
+            #     if tempString[len(tempString) - 1] == ' ' and tempString[len(tempString) - 2] != ',':
+            #         tempString = tempString[:-1]
+            #         if tempString.lower() not in 'que':
+            #             tempString += ', '
+            #         else:
+            #             tempString += ' '
+            # tempString += addComma
+            # totalString = tempString + stringBuilder
+            # total = ''
+            # if totalString.find(' ,') != -1:
+            #     firstHalf = totalString[:totalString.find(' ,')] + ', '
+            #     secondHalf = totalString[totalString.find(',') + 1:]
+            #     print(firstHalf)
+            #     print(secondHalf)
+            #     total = firstHalf + secondHalf
+            # if len(total) > 0:
+            #     print(total)
+            # else:
+            totalString = tempString + pronoms + stringBuilder.lower()
+            # if ',' in totalString:
+            #     totalString = totalString.replace(',', '')
+            print(totalString)
             print('-' * 88)
         except IndexError or SyntaxError:
             print(color.RED + "Incapable d'invertir votre phrase. Veuillez essayer une phrase différente.")
@@ -364,6 +383,7 @@ def usage_demo():
             with open('detect_sample.txt') as sample_file:
                 sample_text = sample_file.read()
                 sample_text = sample_text.lower()
+
 
 if __name__ == '__main__':
     usage_demo()
