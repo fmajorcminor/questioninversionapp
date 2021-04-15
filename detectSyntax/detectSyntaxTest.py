@@ -5,7 +5,6 @@
 """
 Purpose
 Perform syntax analysis on French phrases to convert them to inverted questions
-
 """
 
 import logging
@@ -145,244 +144,232 @@ TestPhrase = [
      }
 ]
 
-interrogatives = ['comment', 'quand', 'qui', 'où', 'd\'où', 'combien',
-                  'quel', 'quelle', 'pourquoi', 'quels', 'quelles']
+interrogatives = ['comment', 'quand', 'qui', 'où', 'd\'où', 'combien', 'quel', 'quelle', 'pourquoi', 'quels', 'quelles']
 
-pronomsObjets = ['me','m\'', 't\'',  'te', 'nous', 'vous', 'le', 'la', 'l\'', 'les', 'lui', 'leur', 'y', 'en']
+pronomsObjets = ['me', 'm\'', 't\'','se', 's\'',  'te', 'nous',
+                 'vous', 'le', 'la', 'l\'', 'les', 'lui', 'leur', 'y', 'en']
 
+apostropheObjects = ['m\'', 't\'', 'l\'', 's\'']
 
 def usage_demo():
     print('-' * 88)
-    # print("Welcome to the Amazon Comprehend detection demo!")
-
-    # logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
-    comp_detect = ComprehendDetect(boto3.client('comprehend'))
+    phraseList = []
+    comp_detect = ComprehendDetect(boto3.client('comprehend'))  # Use AWS Comprehend with boto3
     try:
-        value = input("Mettez votre phrase ici:")
+        value = input("Mettez votre phrase ici:")  # Ask for user input
         print('-' * 88)
     except SyntaxError:
         value = ""
     if not value.lower() == "none":
-        sample_text = value
+        sample_text = value.lower()
+        phraseList.append(sample_text)
     else:
         with open('detect_sample.txt') as sample_file:
-            sample_text = sample_file.read()
-            sample_text = sample_text.lower()
+            for line in sample_file.readlines():
+                phraseList.append(line.lower())
+            # sample_text = sample_text.lower()
     while value != 'END':
         print("Détectant des éléments de syntaxe.")
-
-        # analyze text to find newlines and add question marks
-        if not sample_text.find('je peux') == -1:
-            sample_text = sample_text.replace('peux', 'puis')
-        if not sample_text.find('qu\'est-ce que') == -1:
-            sample_text = sample_text.replace('qu\'est-ce que', 'que')
-        elif not sample_text.find('qu\'est-ce qu\'') == -1:
-            sample_text = sample_text.replace('qu\'est-ce qu\'', 'que ')
-        if not sample_text.find('est-ce que') == -1:
-            sample_text = sample_text.replace('est-ce que', '')
-        elif not sample_text.find('est-ce qu\'') == -1:
-            sample_text = sample_text.replace('est-ce qu\'', ' ')
-        syntax_tokens = comp_detect.detect_syntax(sample_text, 'fr')
-        pronoms = ''
-        hitVerb = False
-        for word in pronomsObjets:
-            for i, text in enumerate(syntax_tokens):
-                if text['PartOfSpeech']['Tag'] == 'VERB':
-                    # hitVerb = True
+        for phraseCount, sample_text in enumerate(phraseList):
+            initialPhrase = sample_text
+            # analyze text to find newlines and add question marks
+            if not sample_text.find('je peux') == -1:
+                sample_text = sample_text.replace('peux', 'puis')
+            if not sample_text.find('qu\'est-ce que') == -1:
+                sample_text = sample_text.replace('qu\'est-ce que', 'que')
+            elif not sample_text.find('qu\'est-ce qu\'') == -1:
+                sample_text = sample_text.replace('qu\'est-ce qu\'', 'que ')
+            if not sample_text.find('est-ce que') == -1:
+                sample_text = sample_text.replace('est-ce que', '')
+            elif not sample_text.find('est-ce qu\'') == -1:
+                sample_text = sample_text.replace('est-ce qu\'', ' ')
+            syntax_tokens = comp_detect.detect_syntax(sample_text, 'fr')
+            pronoms = ''
+            # hitVerb = False
+            for word in pronomsObjets:
+                for i, text in enumerate(syntax_tokens):
+                    if text['PartOfSpeech']['Tag'] == 'VERB' or text['PartOfSpeech']['Tag'] == 'AUX':
+                        # hitVerb = True
+                        break
+                    if word == text['Text'] and text['PartOfSpeech']['Tag'] != 'DET' and i != 0:  # TODO: Need to be able to account for t' and such without breaking other pronouns
+                        pronoms += word
+                        if word not in apostropheObjects:
+                            pronoms += ' '
+                        del syntax_tokens[i]
+                        continue
+                else:
                     break
-                if word == text['Text']:  # TODO: Need to be able to account for t' and such without breaking other pronouns
-                    pronoms += word
-                    # if text['Text'] != 'm\'' and text['Text'] != 't\'' and text['Text'] != 'l\'':
-                    pronoms += ' '
-                    del syntax_tokens[i]
-                    continue
+                continue
+            disclaimer = ''
 
-        disclaimer = ''
+            try:
+                for i in syntax_tokens:
+                    if i['PartOfSpeech']['Score'] < .9:
+                        disclaimer = '\n' + color.BOLD + color.YELLOW + "*AVERTISSEMENT*" + color.END + '\n' \
+                                     + 'Vu que l\'intervalle de confiance du mot ' + color.BOLD + \
+                                     color.YELLOW + i['Text'].upper() + \
+                                     color.END + ' est moins de 90%, la précision de ce changement de ' \
+                                                 'phrase ne peut être garantie.' + '\n'
 
-        try:
-            for i in syntax_tokens:
-                if i['PartOfSpeech']['Score'] < .9:
-                    disclaimer = '\n' + color.BOLD + color.YELLOW + "*AVERTISSEMENT*" + color.END + '\n' \
-                                 + 'Vu que l\'intervalle de confiance du mot ' + color.BOLD + \
-                                 color.YELLOW + i['Text'].upper() + \
-                                 color.END + ' est moins de 90%, la précision de ce changement de ' \
-                                             'phrase ne peut être garantie.' + '\n'
+                # Use TestPhrase instead of calling the API - this will save some data
+                # Make a list of words with Partof speech
 
-            # Use TestPhrase instead of calling the API - this will save some data
-            # Make a list of words with Partof speech
+                wordWithPart = []
+                for index, value in enumerate(syntax_tokens):  # Replace with syntax_tokens/TestPhrase when testing
+                    wordWithPart.append((value['Text'], value['PartOfSpeech']['Tag']))
 
-            wordWithPart = []
-            for index, value in enumerate(syntax_tokens):  # Replace with syntax_tokens/TestPhrase when testing
-                wordWithPart.append((value['Text'], value['PartOfSpeech']['Tag']))
-
-            interrogPron = ''
-            for i, value in enumerate(wordWithPart):
-                if value[0].lower() in interrogatives:
-                    wordWithPart.remove(value)
-                    interrogPron = value[0] + ' '
-                    break
-
-            # If there isn't punctuation after each phrase
-            verbIndex = []
-            pronounIndex = []
-            foundVerb = False
-            foundPron = False
-            for index, each in enumerate(wordWithPart):
-                if foundVerb and foundPron:
-                    break
-                if not foundVerb and each[1] == 'VERB' or each[1] == 'AUX':  # Distinguish between AUX and VERB
-                    foundVerb = True
-                    verbIndex.append(index)
-
-                elif not foundPron and each[1] == 'PRON':
-                    foundPron = True
-                    pronounIndex.append(index)
-                elif not each[0] == ',' and each[1] == 'PUNCT':
-                    foundVerb = False
-                    foundPron = False
-            # print(wordWithPart)
-
-            # have user indicate gender pronoun to account for this
-            foundPronAfter = False
-            addedPronoun = ""
-            while not foundPron:
-                gender = input("Indiquez le sexe/genre du sujet. Mettez masc ou fém:  ").lower()
-                if gender == "masc":
-                    addedPronoun = "il"
-                    foundPron = True
-                    foundPronAfter = True
-                elif gender == "fém":
-                    addedPronoun = "elle"
-                    foundPron = True
-                    foundPronAfter = True
-            # addComma = ''
-            if foundPronAfter:
-                tempTuple = (addedPronoun, 'PRON')
-                for index, word in enumerate(wordWithPart):
-                    if word[1] == 'VERB' or word[1] == 'AUX':
-                        wordWithPart.insert(index, tempTuple)
-                        # wordWithPart.insert(index, (',', 'PUNCT'))
-                        # addComma = ', '
-                        pronounIndex.append(index)
-                        verbIndex.clear()
-                        verbIndex.append(index + 1)
+                interrogPron = ''
+                for i, value in enumerate(wordWithPart):
+                    if value[0].lower() in interrogatives:
+                        wordWithPart.remove(value)
+                        interrogPron = value[0] + ' '
                         break
 
-            # Figure out how to insert the pronoun if there is none initially
-            # now figure out just a subject like, "mon père"
-            for index, verb in enumerate(verbIndex):
-                wordWithPart[verbIndex[index]], wordWithPart[pronounIndex[index]] = wordWithPart[pronounIndex[index]], \
-                                                                                    wordWithPart[verbIndex[index]]
-            stringBuilder = ''
-            stringBuilder += interrogPron  # TODO: Look at this again
-            tempString = ''
-            firstWord = True
-            index = 0
-            while len(wordWithPart) > 0:
-                if wordWithPart[index][1] != 'VERB' and wordWithPart[index][1] != 'AUX':
-                    if firstWord:
-                        if wordWithPart[index][0] == ',':
-                            tempString = tempString[:-1]
-                        if wordWithPart[index][1] == 'DET' and wordWithPart[index][0][
-                            len(wordWithPart[index][0]) - 1] == '\'':
-                            tempString += wordWithPart[index][0]
-                        else:
-                            tempString += wordWithPart[index][0] + ' '
+                # If there isn't punctuation after each phrase
+                verbIndex = []
+                pronounIndex = []
+                foundVerb = False
+                foundPron = False
+                for index, each in enumerate(wordWithPart):
+                    if foundVerb and foundPron:
+                        break
+                    if not foundVerb and each[1] == 'VERB' or each[1] == 'AUX':  # Distinguish between AUX and VERB
+                        foundVerb = True
+                        verbIndex.append(index)
 
-                        firstWord = False
+                    elif not foundPron and each[1] == 'PRON':
+                        foundPron = True
+                        pronounIndex.append(index)
+                    elif not each[0] == ',' and each[1] == 'PUNCT':
+                        foundVerb = False
+                        foundPron = False
+                # print(wordWithPart)
+
+                # have user indicate gender pronoun to account for this
+                foundPronAfter = False
+                addedPronoun = ""
+                while not foundPron:
+                    gender = input("Indiquez le sexe/genre du sujet. Mettez masc ou fém:  ").lower()
+                    if gender == "masc":
+                        addedPronoun = "il"
+                        foundPron = True
+                        foundPronAfter = True
+                    elif gender == "fém":
+                        addedPronoun = "elle"
+                        foundPron = True
+                        foundPronAfter = True
+                # addComma = ''
+                if foundPronAfter:
+                    tempTuple = (addedPronoun, 'PRON')
+                    for index, word in enumerate(wordWithPart):
+                        if word[1] == 'VERB' or word[1] == 'AUX':
+                            wordWithPart.insert(index, tempTuple)
+                            # wordWithPart.insert(index, (',', 'PUNCT'))
+                            # addComma = ', '
+                            pronounIndex.append(index)
+                            verbIndex.clear()
+                            verbIndex.append(index + 1)
+                            break
+
+                # Figure out how to insert the pronoun if there is none initially
+                # now figure out just a subject like, "mon père"
+                for index, verb in enumerate(verbIndex):
+                    wordWithPart[verbIndex[index]], wordWithPart[pronounIndex[index]] = wordWithPart[pronounIndex[index]], \
+                                                                                        wordWithPart[verbIndex[index]]
+                stringBuilder = ''
+                stringBuilder += interrogPron  # TODO: Look at this again
+                tempString = ''
+                firstWord = True
+                index = 0
+                while len(wordWithPart) > 0:
+                    if wordWithPart[index][1] != 'VERB' and wordWithPart[index][1] != 'AUX':
+                        if firstWord:
+                            if wordWithPart[index][0] == ',':
+                                tempString = tempString[:-1]
+                            if (wordWithPart[index][1] == 'DET' or wordWithPart[index][1] == 'ADP' or wordWithPart[index][1] == 'PRON') \
+                                    and wordWithPart[index][0][len(wordWithPart[index][0]) - 1] == '\'':
+                                tempString += wordWithPart[index][0]
+                            else:
+                                tempString += wordWithPart[index][0] + ' '
+
+                            firstWord = False
+                        else:
+                            if wordWithPart[index][0] == ',':
+                                tempString = tempString[:-1]
+                            if wordWithPart[index][1] == 'DET' and \
+                                    wordWithPart[index][0][len(wordWithPart[index][0]) - 1] == '\'':
+                                tempString += wordWithPart[index][0]
+                            else:
+                                tempString += wordWithPart[index][0] + ' '
+
+                        del wordWithPart[index]
                     else:
-                        if wordWithPart[index][0] == ',':
-                            tempString = tempString[:-1]
-                        if wordWithPart[index][1] == 'DET' and wordWithPart[index][0][
-                            len(wordWithPart[index][0]) - 1] == '\'':
-                            tempString += wordWithPart[index][0]
+                        firstWord = True
+                        break
+
+                for index, each in enumerate(wordWithPart):
+                    if each[0].lower() == 'j\'':
+                        tempTuple = ('je', 'PRON')
+                        del wordWithPart[index]
+                        wordWithPart.insert(index, tempTuple)
+                        stringBuilder += tempTuple[0]
+                        stringBuilder += ' '
+                        continue
+
+                    if not each[0] == '?' and each[1] == 'PUNCT':
+                        stringBuilder = stringBuilder[:-1]
+                        if not each[0] == ',':
+                            stringBuilder += ' ?'
+                            stringBuilder += '\n'
+                            firstWord = True
                         else:
-                            tempString += wordWithPart[index][0] + ' '
-
-                    del wordWithPart[index]
-                else:
-                    firstWord = True
-                    break
-
-            for index, each in enumerate(wordWithPart):
-                if each[0].lower() == 'j\'':
-                    tempTuple = ('je', 'PRON')
-                    del wordWithPart[index]
-                    wordWithPart.insert(index, tempTuple)
-                    stringBuilder += tempTuple[0]
-                    stringBuilder += ' '
-                    continue
-
-                if not each[0] == '?' and each[1] == 'PUNCT':
-                    stringBuilder = stringBuilder[:-1]
-                    if not each[0] == ',':
-                        stringBuilder += ' ?'
+                            stringBuilder += each[0]
+                            stringBuilder += ' '
+                    elif each[0] == '?':
+                        stringBuilder += each[0]
                         stringBuilder += '\n'
                         firstWord = True
                     else:
-                        stringBuilder += each[0]
-                        stringBuilder += ' '
-                elif each[0] == '?':
-                    stringBuilder += each[0]
-                    stringBuilder += '\n'
-                    firstWord = True
-                else:
-                    if firstWord:
-                        if not foundPronAfter:
+                        if firstWord:
+                            if not foundPronAfter:
+                                stringBuilder += each[0]
+                            else:
+                                stringBuilder += each[0]
+                            stringBuilder += '-'
+                            if (each[0][-1] == 'a' or each[0][-1] == 'e') and index < len(wordWithPart) - 1 \
+                                    and (wordWithPart[index + 1][0].lower() != 'j\''
+                                         and wordWithPart[index + 1][0].lower() != 'je'):
+                                stringBuilder += 't-'   # handle interrogative words like comment and quand
+                            firstWord = False
+                        elif each[0] in apostropheObjects:
                             stringBuilder += each[0]
                         else:
                             stringBuilder += each[0]
-                        stringBuilder += '-'
-                        if (each[0][-1] == 'a' or each[0][-1] == 'e') \
-                                and index < len(wordWithPart) - 1 and wordWithPart[index + 1][
-                            0].lower() != 'j\'':  # handle interrogative words like comment and quand
-                            stringBuilder += 't-'
-                        firstWord = False
-                    else:
-                        stringBuilder += each[0]
-                        stringBuilder += ' '
-            if '?' not in stringBuilder:
-                stringBuilder += '?'
+                            stringBuilder += ' '
+                if '?' not in stringBuilder:
+                    stringBuilder += '?'
 
-            print(disclaimer)
-            # if len(tempString) > 0:
-            #     if tempString[len(tempString) - 1] == ' ' and tempString[len(tempString) - 2] != ',':
-            #         tempString = tempString[:-1]
-            #         if tempString.lower() not in 'que':
-            #             tempString += ', '
-            #         else:
-            #             tempString += ' '
-            # tempString += addComma
-            # totalString = tempString + stringBuilder
-            # total = ''
-            # if totalString.find(' ,') != -1:
-            #     firstHalf = totalString[:totalString.find(' ,')] + ', '
-            #     secondHalf = totalString[totalString.find(',') + 1:]
-            #     print(firstHalf)
-            #     print(secondHalf)
-            #     total = firstHalf + secondHalf
-            # if len(total) > 0:
-            #     print(total)
-            # else:
-            totalString = tempString + pronoms + stringBuilder.lower()
-            # if ',' in totalString:
-            #     totalString = totalString.replace(',', '')
-            print(totalString)
-            print('-' * 88)
-        except IndexError or SyntaxError:
-            print(color.RED + "Incapable d'invertir votre phrase. Veuillez essayer une phrase différente.")
+                print(disclaimer)
+
+                totalString = tempString + pronoms + stringBuilder.lower()
+                print(str(phraseCount + 1) + '. ' + 'Phrase originale: ' + initialPhrase)
+                print('\t' + 'Phrase invertie: ' + totalString)
+                print('-' * 88)
+            except IndexError or SyntaxError:
+                print(color.RED + "Incapable d'invertir votre phrase. Veuillez essayer une phrase différente.")
         try:
             value = input("Mettez votre phrase ici:")
+            phraseList.clear()
             print('-' * 88)
         except SyntaxError:
             value = ""
         if not value.lower() == "none":
-            sample_text = value
+            sample_text = value.lower()
+            phraseList.append(sample_text)
         else:
             with open('detect_sample.txt') as sample_file:
-                sample_text = sample_file.read()
-                sample_text = sample_text.lower()
+                for line in sample_file.readlines():
+                    phraseList.append(line.lower())
 
 
 if __name__ == '__main__':
