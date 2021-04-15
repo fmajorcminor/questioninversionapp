@@ -13,8 +13,7 @@ from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
-
-class color:
+class Color:
     PURPLE = '\033[95m'
     CYAN = '\033[96m'
     DARKCYAN = '\033[36m'
@@ -146,10 +145,11 @@ TestPhrase = [
 
 interrogatives = ['comment', 'quand', 'qui', 'où', 'd\'où', 'combien', 'quel', 'quelle', 'pourquoi', 'quels', 'quelles']
 
-pronomsObjets = ['me', 'm\'', 't\'','se', 's\'',  'te', 'nous',
+pronomsObjets = ['me', 'm\'', 't\'', 'se', 's\'', 'te', 'nous',
                  'vous', 'le', 'la', 'l\'', 'les', 'lui', 'leur', 'y', 'en']
 
 apostropheObjects = ['m\'', 't\'', 'l\'', 's\'']
+
 
 def usage_demo():
     print('-' * 88)
@@ -191,7 +191,7 @@ def usage_demo():
                     if text['PartOfSpeech']['Tag'] == 'VERB' or text['PartOfSpeech']['Tag'] == 'AUX':
                         # hitVerb = True
                         break
-                    if word == text['Text'] and text['PartOfSpeech']['Tag'] != 'DET' and i != 0:  # TODO: Need to be able to account for t' and such without breaking other pronouns
+                    if word == text['Text'] and text['PartOfSpeech']['Tag'] != 'DET' and i != 0:
                         pronoms += word
                         if word not in apostropheObjects:
                             pronoms += ' '
@@ -205,10 +205,10 @@ def usage_demo():
             try:
                 for i in syntax_tokens:
                     if i['PartOfSpeech']['Score'] < .9:
-                        disclaimer = '\n' + color.BOLD + color.YELLOW + "*AVERTISSEMENT*" + color.END + '\n' \
-                                     + 'Vu que l\'intervalle de confiance du mot ' + color.BOLD + \
-                                     color.YELLOW + i['Text'].upper() + \
-                                     color.END + ' est moins de 90%, la précision de ce changement de ' \
+                        disclaimer = '\n' + Color.BOLD + Color.YELLOW + "*AVERTISSEMENT*" + Color.END + '\n' \
+                                     + 'Vu que l\'intervalle de confiance du mot ' + Color.BOLD + \
+                                     Color.YELLOW + i['Text'].upper() + \
+                                     Color.END + ' est moins de 90%, la précision de ce changement de ' \
                                                  'phrase ne peut être garantie.' + '\n'
 
                 # Use TestPhrase instead of calling the API - this will save some data
@@ -274,7 +274,8 @@ def usage_demo():
                 # Figure out how to insert the pronoun if there is none initially
                 # now figure out just a subject like, "mon père"
                 for index, verb in enumerate(verbIndex):
-                    wordWithPart[verbIndex[index]], wordWithPart[pronounIndex[index]] = wordWithPart[pronounIndex[index]], \
+                    wordWithPart[verbIndex[index]], wordWithPart[pronounIndex[index]] = wordWithPart[
+                                                                                            pronounIndex[index]], \
                                                                                         wordWithPart[verbIndex[index]]
                 stringBuilder = ''
                 stringBuilder += interrogPron  # TODO: Look at this again
@@ -286,7 +287,8 @@ def usage_demo():
                         if firstWord:
                             if wordWithPart[index][0] == ',':
                                 tempString = tempString[:-1]
-                            if (wordWithPart[index][1] == 'DET' or wordWithPart[index][1] == 'ADP' or wordWithPart[index][1] == 'PRON') \
+                            if (wordWithPart[index][1] == 'DET' or wordWithPart[index][1] == 'ADP' or
+                                wordWithPart[index][1] == 'PRON') \
                                     and wordWithPart[index][0][len(wordWithPart[index][0]) - 1] == '\'':
                                 tempString += wordWithPart[index][0]
                             else:
@@ -339,7 +341,7 @@ def usage_demo():
                             if (each[0][-1] == 'a' or each[0][-1] == 'e') and index < len(wordWithPart) - 1 \
                                     and (wordWithPart[index + 1][0].lower() != 'j\''
                                          and wordWithPart[index + 1][0].lower() != 'je'):
-                                stringBuilder += 't-'   # handle interrogative words like comment and quand
+                                stringBuilder += 't-'  # handle interrogative words like comment and quand
                             firstWord = False
                         elif each[0] in apostropheObjects:
                             stringBuilder += each[0]
@@ -356,7 +358,7 @@ def usage_demo():
                 print('\t' + 'Phrase invertie: ' + totalString)
                 print('-' * 88)
             except IndexError or SyntaxError:
-                print(color.RED + "Incapable d'invertir votre phrase. Veuillez essayer une phrase différente.")
+                print(Color.RED + "Incapable d'invertir votre phrase. Veuillez essayer une phrase différente.")
         try:
             value = input("Mettez votre phrase ici:")
             phraseList.clear()
