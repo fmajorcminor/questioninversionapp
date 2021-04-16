@@ -6,8 +6,6 @@
 - If word is capitalized vs. non-capitalized, it changes confidence level. I've only seen this with Comment. More to come
 
 ######Current Problems:
-- D\'ou doesn't work - it splits it into two words
-- same thing with j\'
 - negation
 - combien de + noun
 
